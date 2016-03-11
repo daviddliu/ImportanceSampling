@@ -64,19 +64,17 @@ class Sampler(object):
         :param allele: the allele k, a number
         :return: An array of probabilities for each allele, according to the Stephen-Donnelly proposal distribution
         """
-        total_mutation_sites = sum(self.multiplicity_vector)
         distribution_vector = np.empty((len(self.multiplicity_vector)))
         M = self.singleton_alleles()
         for allele in range(len(self.multiplicity_vector)):
             n_k = self.multiplicity_vector[allele]
             # Multiplicity >= 2 or the allele is still in the sample
             if (allele in M) or (n_k >= 2):
-                distribution_vector[allele] = float(n_k)/float(total_mutation_sites)
+                distribution_vector[allele] = float(n_k)
             else: # n_k = 1 and k not in M
                 distribution_vector[allele] = 0
-
-        return distribution_vector
-
+        total_mutation_sites = sum(distribution_vector)
+        return map(lambda count: count/float(total_mutation_sites), distribution_vector)
     
 
     def update_sequences_and_counts(self, allele):
@@ -106,7 +104,6 @@ class Sampler(object):
                 new_allele_sequence = self.sequence_array[allele]
                 new_allele_sequence[deleted_site] = 0
                 coalesce_partner = self.contains_allele(new_allele_sequence)
-#                ipdb.set_trace()
                 # If s_k^m does occur in the sample then merge k with whatever else has this
                 if coalesce_partner != -1:
                     self.sequence_array[allele, :] = 0
@@ -118,19 +115,10 @@ class Sampler(object):
                     pass
 
         else: # n_k = 1 and k not in M
+            # TODO: What is this case? Seems to get stuck in a loop here on the multiplicity condition.
             pass
 
         return None
-
-    def random_choice(self, array):
-        rand_num = rand.uniform(0, 1)
-        tally = 0
-        for i, num in enumerate(array):
-            tally += num
-            if tally > rand_num:
-                return i
-        return len(array) - 1
-
 
     def generate_sample(self):
         """
@@ -139,17 +127,17 @@ class Sampler(object):
         """
         path = []
         while True:
-            print self.multiplicity_vector
+            path.append(self.sequence_array.tolist())
+            # Recur until the sequence matrix is all zeroes and there is only one non-zero entry in the multiplicity vector
+            # TODO: Add the multiplicity vector condition
+            if np.all(self.sequence_array == 0):
+                return path
             distribution = self.generate_distribution_SD()
             # Choose an event with this distribution
-            # mutation_site = np.random.choice(len(np.nonzero(self.multiplicity_vector)), 1, p=distribution)[0]
-            mutation_site = self.random_choice(distribution)
-            path.append(self.sequence_array[mutation_site].tolist())
+            mutation_site = np.random.choice(len(self.multiplicity_vector), 1, p=distribution)[0]
             # Update the allele_array and multiplicity_vector
             self.update_sequences_and_counts(mutation_site)
-            # Recur until the sequence matrix is all zeroes
-            if np.all(self.sequence_array == 0) and (np.count_nonzero(self.multiplicity_vector) == len(self.multiplicity_vector) - 1):
-                return None
+    
         
 
 toy_sequence_array = np.array([
