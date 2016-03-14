@@ -111,7 +111,7 @@ class Sampler(object):
                 # If s_k^m does occur in the sample then merge k with whatever else has this
                 if coalesce_partner != -1:
                     # Delete the duplicate row and adjust the multiplicities
-                    self.multiplicity_vector[coalesce_partner] += self.multiplicity_vector[allele]
+                    self.multiplicity_vector[coalesce_partner] += copy.copy(self.multiplicity_vector[allele])
                     self.multiplicity_vector[allele] = 0
                     self.sequence_array[allele, :] = 0
                 # If s_k^m does not occur in the sample then don't change the multiplicity
@@ -124,6 +124,12 @@ class Sampler(object):
 
         else: # n_k = 1 and k not in M
             # Can't do anything in this case.
+            # Check so that infinite loops don't happen
+            # Coalesce everything at once
+            if np.all(self.sequence_array == 0):
+                distribution_vector = np.zeros((len(self.multiplicity_vector)))
+                distribution_vector[0] = 1
+                self.multiplicity_vector = distribution_vector.astype(int)
             pass
 
         return None
@@ -135,14 +141,15 @@ class Sampler(object):
         """
         path = []
         while True:
-            path.append((self.sequence_array.tolist(), self.multiplicity_vector.tolist()))
             # Recur until the sequence matrix is all zeroes and there is only one non-zero entry in the multiplicity vector
             # TODO: Add the multiplicity vector condition
-            if np.all(self.sequence_array == 0) and sum(self.multiplicity_vector) == 1:
-                return path
             distribution = self.generate_distribution_SD()
             # Choose an event with this distribution
             mutation_site = np.random.choice(len(self.multiplicity_vector), 1, p=distribution)[0]
+            path.append((self.sequence_array.tolist(), self.multiplicity_vector.tolist(), distribution[mutation_site]))
+            if np.all(self.sequence_array == 0) and sum(self.multiplicity_vector) == 1:
+                path.append((self.sequence_array.tolist(), self.multiplicity_vector.tolist(), 1))
+                return path
             # Update the allele_array and multiplicity_vector
             self.update_sequences_and_counts(mutation_site)
     
