@@ -3,6 +3,7 @@
 import numpy as np
 import random as rand
 import ipdb
+import copy
 
 class Sampler(object):
     """
@@ -33,6 +34,9 @@ class Sampler(object):
         return -1
 
     def delete_site_from_allele(self, allele):
+        """
+        Used for unique allele indices. Returns the allele with the first unique deleted.
+        """
         for i, num in enumerate(allele):
             if num == 1:
                 new_allele = allele
@@ -74,6 +78,9 @@ class Sampler(object):
             else: # n_k = 1 and k not in M
                 distribution_vector[allele] = 0
         total_mutation_sites = sum(distribution_vector)
+        # Here, the sequence_array 
+#        if np.all(self.sequence_array == 0):
+
         return map(lambda count: count/float(total_mutation_sites), distribution_vector)
     
 
@@ -97,25 +104,26 @@ class Sampler(object):
                     if self.is_unique_mutation(allele, mutation):
                         # Delete this column
                         deleted_site = mutation
-                        self.sequence_array[:, deleted_site] = 0
-                        print "Deleted a column"
                         break
-
-                new_allele_sequence = self.sequence_array[allele]
+                new_allele_sequence = copy.copy(self.sequence_array[allele])
                 new_allele_sequence[deleted_site] = 0
                 coalesce_partner = self.contains_allele(new_allele_sequence)
                 # If s_k^m does occur in the sample then merge k with whatever else has this
                 if coalesce_partner != -1:
-                    self.sequence_array[allele, :] = 0
+                    # Delete the duplicate row and adjust the multiplicities
+                    self.multiplicity_vector[coalesce_partner] += self.multiplicity_vector[allele]
                     self.multiplicity_vector[allele] = 0
-                    self.multiplicity_vector[coalesce_partner] += 1
+                    self.sequence_array[allele, :] = 0
                 # If s_k^m does not occur in the sample then don't change the multiplicity
                 else:
                     # Already deleted the column
                     pass
+                # Actually delete the column now that changes have been made.
+                self.sequence_array[:, deleted_site] = 0
+                print "Deleted a column"
 
         else: # n_k = 1 and k not in M
-            # TODO: What is this case? Seems to get stuck in a loop here on the multiplicity condition.
+            # Can't do anything in this case.
             pass
 
         return None
@@ -127,10 +135,10 @@ class Sampler(object):
         """
         path = []
         while True:
-            path.append(self.sequence_array.tolist())
+            path.append((self.sequence_array.tolist(), self.multiplicity_vector.tolist()))
             # Recur until the sequence matrix is all zeroes and there is only one non-zero entry in the multiplicity vector
             # TODO: Add the multiplicity vector condition
-            if np.all(self.sequence_array == 0):
+            if np.all(self.sequence_array == 0) and sum(self.multiplicity_vector) == 1:
                 return path
             distribution = self.generate_distribution_SD()
             # Choose an event with this distribution
@@ -138,7 +146,12 @@ class Sampler(object):
             # Update the allele_array and multiplicity_vector
             self.update_sequences_and_counts(mutation_site)
     
-        
+
+
+def print_matrix(matrix):
+    for row in matrix:
+        print row
+    print "---"
 
 toy_sequence_array = np.array([
     [1, 0, 0, 0, 0],
@@ -149,4 +162,7 @@ toy_sequence_array = np.array([
 toy_multiplicity_vector = np.array([3, 1, 1, 1])
 toy_sampler = Sampler(toy_sequence_array, toy_multiplicity_vector)
 
-print toy_sampler.generate_sample()
+states = toy_sampler.generate_sample()
+for state in states:
+    print state[1]
+    print_matrix(state[0])
