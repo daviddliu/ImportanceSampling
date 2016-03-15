@@ -33,16 +33,6 @@ class Sampler(object):
                 return i
         return -1
 
-    def delete_site_from_allele(self, allele):
-        """
-        Used for unique allele indices. Returns the allele with the first unique deleted.
-        """
-        for i, num in enumerate(allele):
-            if num == 1:
-                new_allele = allele
-                allele[i] = 0
-                return allele
-
 
     def singleton_alleles(self):
         """
@@ -78,9 +68,8 @@ class Sampler(object):
             else: # n_k = 1 and k not in M
                 distribution_vector[allele] = 0
         total_mutation_sites = sum(distribution_vector)
-        # Here, the sequence_array 
-#        if np.all(self.sequence_array == 0):
-
+        print self.sequence_array
+        print self.multiplicity_vector
         return map(lambda count: count/float(total_mutation_sites), distribution_vector)
     
 
@@ -110,10 +99,13 @@ class Sampler(object):
                 coalesce_partner = self.contains_allele(new_allele_sequence)
                 # If s_k^m does occur in the sample then merge k with whatever else has this
                 if coalesce_partner != -1:
-                    # Delete the duplicate row and adjust the multiplicities
-                    self.multiplicity_vector[coalesce_partner] += copy.copy(self.multiplicity_vector[allele])
-                    self.multiplicity_vector[allele] = 0
-                    self.sequence_array[allele, :] = 0
+                    if np.all(new_allele_sequence == 0):
+                        self.multiplicity_vector[allele] -= 1
+                    else:
+                        # Delete the duplicate row and adjust the multiplicities
+                        self.multiplicity_vector[coalesce_partner] += copy.copy(self.multiplicity_vector[allele])
+                        self.multiplicity_vector[allele] = 0
+                        self.sequence_array[allele, :] = 0
                 # If s_k^m does not occur in the sample then don't change the multiplicity
                 else:
                     # Already deleted the column
@@ -123,13 +115,6 @@ class Sampler(object):
                 print "Deleted a column"
 
         else: # n_k = 1 and k not in M
-            # Can't do anything in this case.
-            # Check so that infinite loops don't happen
-            # Coalesce everything at once
-            if np.all(self.sequence_array == 0):
-                distribution_vector = np.zeros((len(self.multiplicity_vector)))
-                distribution_vector[0] = 1
-                self.multiplicity_vector = distribution_vector.astype(int)
             pass
 
         return None
@@ -139,26 +124,24 @@ class Sampler(object):
         Starts from a random allele k and generates a sample based on the SD distribution.
         :return: An evolutionary history, with its weight.
         """
-        path = []
+        path = [ ]
         while True:
             # Recur until the sequence matrix is all zeroes and there is only one non-zero entry in the multiplicity vector
             # TODO: Add the multiplicity vector condition
+            if np.all(self.sequence_array == 0) and sum(self.multiplicity_vector) == 1:
+                path.append((self.sequence_array.tolist(), self.multiplicity_vector.tolist(), 1))
+                return path
             distribution = self.generate_distribution_SD()
             # Choose an event with this distribution
             mutation_site = np.random.choice(len(self.multiplicity_vector), 1, p=distribution)[0]
             path.append((self.sequence_array.tolist(), self.multiplicity_vector.tolist(), distribution[mutation_site]))
-            if np.all(self.sequence_array == 0) and sum(self.multiplicity_vector) == 1:
-                path.append((self.sequence_array.tolist(), self.multiplicity_vector.tolist(), 1))
-                return path
             # Update the allele_array and multiplicity_vector
             self.update_sequences_and_counts(mutation_site)
-    
 
 
 def print_matrix(matrix):
     for row in matrix:
         print row
-    print "---"
 
 toy_sequence_array = np.array([
     [1, 0, 0, 0, 0],
@@ -173,3 +156,12 @@ states = toy_sampler.generate_sample()
 for state in states:
     print state[1]
     print_matrix(state[0])
+    print "Weight %f" % state[2]
+    print "---"
+
+
+
+
+## TODO: Make sure that zero rows get coalesced together.
+## TODO: Importance weight of a path is the product of all the probabilities of the branches taken.
+## TODO: Write the likelihood function for a path.
