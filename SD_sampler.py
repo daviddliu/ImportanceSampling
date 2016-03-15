@@ -69,6 +69,17 @@ class Sampler(object):
                 distribution_vector[allele] = 0
         total_mutation_sites = sum(distribution_vector)
         return map(lambda count: count/float(total_mutation_sites), distribution_vector)
+
+    def generate_distribution_Hobolth(self):
+        """
+        :param: allele: the allele, k, a number
+        :return: An array of probabilities for each allele, according to the Hobolth proposal distribution
+        """
+        distribution_vector = np.empty(len(self.multiplicity_vector)))
+        for allele in range(len(self.multiplicity_vector)):
+            ### Generate the probability for each allele according to Hobolth.
+            ### distribution_vector[allele] = probability
+        return distribution_vector
     
 
     def update_sequences_and_counts(self, allele):
