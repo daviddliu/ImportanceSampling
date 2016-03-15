@@ -68,8 +68,6 @@ class Sampler(object):
             else: # n_k = 1 and k not in M
                 distribution_vector[allele] = 0
         total_mutation_sites = sum(distribution_vector)
-        print self.sequence_array
-        print self.multiplicity_vector
         return map(lambda count: count/float(total_mutation_sites), distribution_vector)
     
 
