@@ -71,17 +71,60 @@ class Sample(object):
         return map(lambda count: count/float(total_mutation_sites), distribution_vector)
 
     def generate_distribution_Hobolth(self):
-        """
-        :param: allele: the allele, k, a number
-        :return: An array of probabilities for each allele, according to the Hobolth proposal distribution
-        """
-        distribution_vector = np.empty(len(self.multiplicity_vector))
-        for allele in range(len(self.multiplicity_vector)):
-            ### Generate the probability for each allele according to Hobolth.
-            ### distribution_vector[allele] = probability
-            pass
-        return distribution_vector
+            """
+            :param: allele: the allele, k, a number
+            :return: An array of probabilities for each allele, according to the Hobolth proposal distribution
+            """
+            distribution_vector = np.empty((len(self.multiplicity_vector)))
+            M = self.singleton_alleles()
+            theta = self.watterson_est()
+
+            #Row vector times sequence matrix
+            d_m = np.dot(self.multiplicity_vector,self.sequence_array)
+            
+            u_km = copy.copy(self.sequence_array) #temporarily copy sequence_array to preserve dimensions
+            for row in range(np.shape(self.sequence_array)[0]):
+                for column in range(np.shape(self.sequence_array)[1]):
+                    if(int(sequence_array[row][column]) == 1):
+                        u[row][column] = p_theta(theta, d_m[column]) * self.multiplicity_vector[row] / float(d_m[column])
+                    else: #if sequence_array[row][column] == 0 WILL NEED TO CHANGE FOR 2 LOCI CASE
+                        u[row][column] = ((1.0 - p_theta(theta, d_m[column]))*self.multiplicity_vector[row])/(float(sum(self.multiplicity_vector)) - float(d_m[column]))
+            
+            for allele in range(len(self.multiplicity_vector)):
+                ### Generate the probability for each allele according to Hobolth.
+                ### distribution_vector[allele] = probability
+                n_k = self.multiplicity_vector[allele]
+                if (allele in M) or (n_k >= 2):
+                    distribution_vector[allele] = float(sum([u_km[allele][column] for column in range(np.shape(u_km)[1])]))
+                else:
+                    distribution_vector[allele] = 0
+                
+            total_mutation_sites = sum(distribution_vector)
+            return map(lambda count: count/float(total_mutation_sites), distribution_vector)
     
+    def watterson_est(self):
+        M = np.shape(self.sequence_array)[1] #number of columns        
+        return float(M)/sum([1/float(i) for i in range(1,sum(self.multiplicity_vector)-1)])
+        
+    def p_theta(self, theta, d):
+        n = sum(self.multiplicity_vector)
+        p = 0
+        for k in range(2, n - d + 1):
+            f1 = (float(d) - 1)/(n - k)
+            f2 = 1.0/float(k-1+theta)
+            f3 = stat.comb(n-d-1,k-2)
+            f4 = stat.comb(n-1, k-1)
+            f5 = 0
+            for i in range(2,n-d+1):
+                t1 = 1.0/ float(i-1+theta)
+                t2 = stat.comb(n-d-1,i-2)
+                t3 = stat.comb(n-1,i-1)
+                f5 += t1 * t2 / float(t3)
+                
+            p += f1 * f2 * f3/(f4 * f5)
+            
+            return p
+        
 
     def update_sequences_and_counts(self, allele):
         """
@@ -223,4 +266,5 @@ for state in states:
     print "---"
 """
 
-samples = toy_sampler.generate_N_samples(1, proposal_dist="Hobolth")
+samples = toy_sampler.generate_N_samples(100, proposal_dist="Hobolth")
+print toy_sampler.calculate_likelihood(samples)
