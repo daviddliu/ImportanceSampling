@@ -5,9 +5,9 @@ import random as rand
 import ipdb
 import copy
 
-class Sampler(object):
+class Sample(object):
     """
-    Takes a dataset of DNA samples and samples from their possible phylogenies.
+    Takes a dataset of DNA samples and generates a sample from their possible phylogenies.
 
     in:
      + sequence_array: list of lists
@@ -75,10 +75,11 @@ class Sampler(object):
         :param: allele: the allele, k, a number
         :return: An array of probabilities for each allele, according to the Hobolth proposal distribution
         """
-        distribution_vector = np.empty(len(self.multiplicity_vector)))
+        distribution_vector = np.empty(len(self.multiplicity_vector))
         for allele in range(len(self.multiplicity_vector)):
             ### Generate the probability for each allele according to Hobolth.
             ### distribution_vector[allele] = probability
+            pass
         return distribution_vector
     
 
@@ -107,7 +108,6 @@ class Sampler(object):
                 new_allele_sequence[deleted_site] = 0
                 coalesce_partner = self.contains_allele(new_allele_sequence)
                 # Actually delete the column now that changes have been made.
-                self.sequence_array[:, deleted_site] = 0
                 # If s_k^m does occur in the sample then merge k with whatever else has this
                 if coalesce_partner != -1:
                     # Don't coalesce if it's all 0's
@@ -122,7 +122,7 @@ class Sampler(object):
                 else:
                     # Already deleted the column
                     pass
-                print "Deleted a column"
+                self.sequence_array[:, deleted_site] = 0
 
         else: # n_k = 1 and k not in M
             pass
@@ -139,12 +139,17 @@ class Sampler(object):
             # Recur until the sequence matrix is all zeroes and there is only one non-zero entry in the multiplicity vector
             if np.all(self.sequence_array == 0) and sum(self.multiplicity_vector) <= 1:
                 path.append((self.sequence_array.tolist(), self.multiplicity_vector.tolist(), 1))
+                for state in path:
+                    print state[1]
+                    print_matrix(state[0])
+                    print "Weight %f" % state[2]
+                    print "---"
                 return path
             distribution = None
             if proposal == "Hobolth":
-                distribution = self.generate_distribution_SD(proposal)
+                distribution = self.generate_distribution_SD()
             elif proposal == "SD":
-                distribution = self.generate_distribution_SD(proposal)
+                distribution = self.generate_distribution_Hobolth()
             else:
                 raise Exception("No such distribution %s exists" % proposal)
             # Choose an event with this distribution
@@ -153,6 +158,15 @@ class Sampler(object):
             # Update the allele_array and multiplicity_vector
             self.update_sequences_and_counts(mutation_site)
 
+
+class Sampler(object):
+    """
+    Generates N samples, using the Sample object.
+    """
+
+    def __init__(self, sequence_array, multiplicity_vector):
+        self.sequence_array = np.array(sequence_array)
+        self.multiplicity_vector = np.array(multiplicity_vector)
 
     def generate_N_samples(self, n, proposal_dist="Hobolth"):
         """
@@ -171,7 +185,8 @@ class Sampler(object):
         """
         samples = [ ]
         for i in range(n):
-            samples.append(self.generate_sample(proposal=proposal_dist)
+           sample = Sample(copy.copy(self.sequence_array), copy.copy(self.multiplicity_vector)).generate_sample()
+           samples.append(sample)
         return samples
 
 
@@ -183,7 +198,7 @@ class Sampler(object):
         total_weight = 0
         for sample in samples:
             # Take the product over the weights, which is the third entry of each tuple in the list of states.
-            total_weight += reduce(mul, map(lambda state_tuple: state_tuple[3], sample), 1)
+            total_weight += reduce(mul, map(lambda state_tuple: state_tuple[2], sample), 1)
         return total_weight/len(samples)
 
 def print_matrix(matrix):
@@ -208,5 +223,4 @@ for state in states:
     print "---"
 """
 
-samples = toy_sampler.generate_N_samples(100)
-print toy_sampler.calculate_likelihood(samples)
+samples = toy_sampler.generate_N_samples(1, proposal_dist="Hobolth")
