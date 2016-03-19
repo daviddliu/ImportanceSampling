@@ -1,0 +1,23 @@
+# Done
++ Figured out the nature and scope of the problem
++ Hobolth 2008
++ True likelihoods given by the coalescent program for certain datasets
++ Four Russians Paper: Gusfield 97
+
+# Code TODO
++ Try to see deviations from the true probabilities of each edge
+
+# Reading TODO
++ Stephens-Donnelly 2000: Importance sampling
++ Griffiths-Jenkins-Song 2007: Two locus
++ Jenkins-Song 2011: Recurrent mutations
+
+# Ideas
++ Try to use some shortcut similar to Four Russians to reduce the space of inputs
++ Consider a model other than the standard coalescent
++ Is there some sort of shortcut if you consider things beyond just some static number of mutatino events
+
+# Reading List
+	## Yun Song two loci paper
+	## Later: Jenkins and Hein, Genetics
+	## Griffiths two-locus model
